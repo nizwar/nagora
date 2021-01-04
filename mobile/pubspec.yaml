@@ -1,0 +1,27 @@
+name: nagora
+description: A new Flutter project.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ">=2.7.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  agora_rtc_engine: ^3.2.1
+  cached_network_image: ^2.5.0
+  dio: ^3.0.10
+  flutter_chat_bubble: ^1.0.2
+  ndialog: ^3.2.1
+  permission_handler: ^5.0.1+1
+  provider: ^4.3.2+3
+  shared_preferences: ^0.5.12+4
+  shimmer: ^1.1.1
+  web_socket_channel: ^1.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+flutter:
+  uses-material-design: true
