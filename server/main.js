@@ -1,5 +1,5 @@
 const express = require('express');
-const WebSocket = require('ws'); 
+const WebSocket = require('ws');
 
 const app = express();
 const server = require('http').createServer(app);
@@ -27,11 +27,11 @@ wss.on('connection', ws => {
                 };
                 rooms.push(roomItem);
                 wss.clients.forEach(client => {
-                    client.send(JSON.stringify(roomItem)); 
+                    client.send(JSON.stringify(roomItem));
                 })
                 break;
 
-            case "join_room": 
+            case "join_room":
                 if (checkUserExists(room.users, msg.data.id_user))
                     console.log("User already exists")
                 else
@@ -47,7 +47,14 @@ wss.on('connection', ws => {
                 break;
 
             case "mute_id":
-                room.users.find(item => item.id == msg.data.id_user).muted = msg.data.mute;
+                var user = room.users.find(item => item.id == msg.data.id_user);
+                if (user != null)
+                    user.muted = msg.data.mute;
+                else
+                    room.users.push({
+                        "id": msg.data.id_user,
+                        "muted": msg.data.mute,
+                    })
                 wss.clients.forEach(client => {
                     client.send(JSON.stringify(room));
                     console.log(room);
@@ -55,10 +62,10 @@ wss.on('connection', ws => {
                 break;
 
             case "mute_all":
-                if(msg.data.id_user != room.id_master) return;
-                room.users.forEach(user=>{
-                    if(user.id != msg.data.id_user)
-                    user.muted = msg.data.mute;
+                if (msg.data.id_user != room.id_master) return;
+                room.users.forEach(user => {
+                    if (user.id != msg.data.id_user)
+                        user.muted = msg.data.mute;
                 })
 
                 wss.clients.forEach(client => {
@@ -74,8 +81,11 @@ wss.on('connection', ws => {
 app.get("/rooms", (req, res) => {
     res.send(rooms);
 });
+app.get("/", (req, res) => {
+    res.send("NAGORA HERE");
+});
 
-server.listen(6969, function () {
+server.listen(process.env.PORT || 5000, function () {
     console.log('server listening');
 });
 

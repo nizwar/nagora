@@ -51,8 +51,7 @@ class _MainScreenState extends State<MainScreen> {
                               context,
                               RoomScreen(
                                 channelName: e?.name,
-                                title: "Room ${e?.name}",
-                                published: true,
+                                title: "Room #${e?.name}",
                                 creator: e?.idMaster ==
                                         UserProvider.instance(context)
                                             .userInfo
@@ -101,7 +100,6 @@ class _MainScreenState extends State<MainScreen> {
         RoomScreen(
           channelName: resp,
           creator: true,
-          published: false,
           title: "Room #$resp",
         ));
     if (mounted) setState(() {});

@@ -7,7 +7,7 @@ class RoomsHttp extends HttpConnection {
   RoomsHttp(BuildContext context) : super(context);
 
   Future<List<RoomChannel>> getRooms() async {
-    var resp = await get("http://$websocket:$websocketPort/rooms", pure: true);
+    var resp = await get("https://$websocket/rooms", pure: true);
     return resp.map<RoomChannel>((item) => RoomChannel.fromJson(item)).toList();
   }
 }

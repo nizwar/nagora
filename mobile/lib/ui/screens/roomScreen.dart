@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:developer';
+import 'dart:math';
+import 'dart:developer' as console;
 
-import 'package:agora_rtc_engine/rtc_channel.dart';
 import 'package:agora_rtc_engine/rtc_engine.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -21,10 +21,8 @@ class RoomScreen extends StatefulWidget {
   final String title;
   final String channelName;
   final bool creator;
-  final bool published;
 
-  const RoomScreen(
-      {Key key, this.title, this.channelName, this.creator, this.published})
+  const RoomScreen({Key key, this.title, this.channelName, this.creator})
       : super(key: key);
   @override
   _RoomScreenState createState() => _RoomScreenState();
@@ -34,7 +32,6 @@ class _RoomScreenState extends State<RoomScreen> {
   RoomChannel _roomChannel;
 
   RtcEngine _rtc;
-  RtcChannel _rtcChannel;
   WebSocketChannel _socketChannel =
       IOWebSocketChannel.connect("ws://$websocket:$websocketPort");
   bool ready = false;
@@ -70,7 +67,7 @@ class _RoomScreenState extends State<RoomScreen> {
                   ).show(context);
                 }
                 SocketUtils.muteAll(context,
-                    room: widget.channelName, mute: false);
+                    room: widget.channelName, mute: true);
               })
         ],
       ),
@@ -90,15 +87,21 @@ class _RoomScreenState extends State<RoomScreen> {
                   ));
                 RoomChannel resp =
                     RoomChannel.fromJson(jsonDecode(snapshot.data));
+                console.log(resp.toString());
                 if (resp.name == widget.channelName) _roomChannel = resp;
 
-                print(resp);
+                var me = resp.users.firstWhere((element) =>
+                    element.id ==
+                    UserProvider.instance(context).userInfo.userAccount);
+
+                if (me != null && me.muted)
+                  _enableMicrophone(UserProvider.instance(context), false);
 
                 return ListView(
                   children: _roomChannel.users
                       .map((e) => ListTile(
                             title: Text("#${e.id}"),
-                            leading: Icon((e?.muted ?? false)
+                            leading: Icon(!(e?.muted ?? false)
                                 ? Icons.mic
                                 : Icons.mic_off),
                           ))
@@ -132,74 +135,61 @@ class _RoomScreenState extends State<RoomScreen> {
     );
   }
 
-  void _enableMicrophone(UserProvider provider) {
-    _rtc.enableLocalAudio(!provider.speaker).then((value) {
-      provider.microphone = !provider.microphone;
-      print(provider.microphone);
-      SocketUtils.muteMe(context,
-          room: widget.channelName, mute: provider.microphone);
-    });
+  void _enableMicrophone(UserProvider provider, [bool active]) async {
+    await _rtc.enableLocalAudio(active ?? !provider.microphone);
   }
 
   void _enableSpeaker(UserProvider provider) {
-    _rtc
-        .setEnableSpeakerphone(!provider.speaker)
-        .then((value) => provider.speaker = !provider.speaker);
+    _rtc.setEnableSpeakerphone(!provider.speaker).then((value) {
+      provider.speaker = !provider.speaker;
+    });
   }
 
   void initRTC() async {
+    Future.delayed(Duration.zero).then((value) {});
     if (defaultTargetPlatform == TargetPlatform.android) {
       await [Permission.microphone].request();
     }
     _rtc = await RtcEngine.create(agoraID);
     await _rtc.enableAudio();
+    await _rtc.enableLocalAudio(true);
     await _rtc.setChannelProfile(ChannelProfile.LiveBroadcasting);
-    await _rtc.setClientRole(
-        widget.creator ? ClientRole.Broadcaster : ClientRole.Audience);
+    // await _rtc.setClientRole(
+    //     widget.creator ? ClientRole.Broadcaster : ClientRole.Audience);
+    await _rtc.setClientRole(ClientRole.Broadcaster);
     _rtc
       ..setEventHandler(RtcEngineEventHandler(
+        error: (err) {
+          console.log("Terjadi error $err");
+        },
         joinChannelSuccess: (channel, uid, elapsed) {
-          log('joinChannelSuccess $channel $uid $elapsed');
+          SocketUtils.joinRoom(context, name: widget.channelName);
+          console.log("Berhasil join #$channel");
         },
-        leaveChannel: (stats) {
-          log('leaveChannel ${stats.toJson()}');
+        activeSpeaker: (uid) {
+          console.log("Active speaker #$uid");
         },
+        microphoneEnabled: (enabled) {
+          UserProvider.instance(context).microphone = enabled;
+          console.log(
+              "Microphone #$enabled ${UserProvider.instance(context).microphone}");
+          SocketUtils.muteMe(context, room: widget.channelName, mute: !enabled);
+        },
+        leaveChannel: (stats) {},
       ));
 
-    if ((widget.creator ?? false) && !(widget.published ?? false)) {
-      _rtcChannel = await RtcChannel.create(widget.channelName);
-      _rtcChannel.setEventHandler(RtcChannelEventHandler(
-        joinChannelSuccess: (channel, uid, elapsed) {
-          log("Berhasil gabung channel");
-        },
-        userJoined: (uid, elapsed) {
-          log("$uid bergabung di channel");
-        },
-      ));
-
-      await _rtcChannel.setClientRole(ClientRole.Broadcaster);
-      await _rtcChannel.joinChannel(
-          null,
-          null,
-          UserProvider.instance(context).userInfo.uid,
-          ChannelMediaOptions(true, false));
-    } else {
-      await _rtc.joinChannel(null, widget.channelName, null,
-          UserProvider.instance(context).userInfo.uid);
-      await _rtc
-          .enableLocalAudio(true)
-          .then((value) => UserProvider.instance(context).speaker = true);
-    }
-
-    Future.delayed(Duration.zero).then((value) {
-      SocketUtils.joinRoom(context, name: widget.channelName);
+    await _rtc.enableLocalAudio(true).then((value) {
+      UserProvider.instance(context).microphone = true;
+      SocketUtils.muteMe(context, room: widget.channelName, mute: false);
     });
+    await _rtc.joinChannel(
+        null, widget.channelName, null, Random().nextInt(99));
   }
 
   @override
   void dispose() {
-    _rtcChannel?.leaveChannel();
     _rtc?.leaveChannel();
+    _rtc?.destroy();
     _socketChannel.sink.close();
     super.dispose();
   }
