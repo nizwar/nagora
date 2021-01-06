@@ -150,6 +150,7 @@ class _RoomScreenState extends State<RoomScreen> {
     if (defaultTargetPlatform == TargetPlatform.android) {
       await [Permission.microphone].request();
     }
+
     _rtc = await RtcEngine.create(agoraID);
     await _rtc.enableAudio();
     await _rtc.enableLocalAudio(true);

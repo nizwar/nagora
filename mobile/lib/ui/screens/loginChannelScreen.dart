@@ -31,10 +31,6 @@ class LoginChannelScreen extends StatelessWidget {
                 color: primaryColor,
                 shape: StadiumBorder(),
                 onPressed: () async {
-                  await AgoraProvider.instance(context)
-                      .rtcEngine
-                      .registerLocalUserAccount(agoraID, _nameController.text);
-
                   UserProvider.instance(context).userInfo = UserInfo.fromJson({
                     "uid": int.parse(DateTime.now()
                         .millisecondsSinceEpoch

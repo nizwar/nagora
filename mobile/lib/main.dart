@@ -39,7 +39,6 @@ class _RootState extends State<Root> {
   void initState() {
     Future.delayed(Duration.zero).then((value) async {
       await Future.wait([
-        AgoraProvider.initEngine(context),
         Preferences.instance().then((value) {
           if (value.userAccount != null && value.uid != null) {
             UserProvider.instance(context).userInfo = UserInfo.fromJson({
